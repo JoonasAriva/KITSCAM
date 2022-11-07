@@ -1,10 +1,12 @@
+import glob
+import json
+import logging
 import os
+from typing import Tuple, List, Dict
+
 import nibabel as nib
 import numpy as np
-import glob
-from typing import Tuple, List
 from tqdm import tqdm
-import json
 
 
 def classify_slices(segmentation: np.ndarray) -> Tuple[List, List]:
@@ -15,17 +17,30 @@ def classify_slices(segmentation: np.ndarray) -> Tuple[List, List]:
     no_kidney_slice_indexes = [slice_nr for slice_nr, i in enumerate(segmentation) if 1 not in i]
     return kidney_slice_indexes, no_kidney_slice_indexes
 
-def filter_slices(slice)
+
+def get_slices(data: Dict, patient_indexes: np.ndarray, file_name: str = None) -> Dict:
+    # filter ct scan dictionary based on patient ids and save resulting dict
+    filtered_data = {key: data[key] for key in patient_indexes}
+    if file_name:
+        with open(file_name + ".json", "w") as outfile:
+            json.dump(filtered_data, outfile)
+    return filtered_data
+
+
+logging.basicConfig(format='%(asctime)s | %(levelname)s: %(message)s', level=logging.NOTSET)
 
 os.chdir('/gpfs/space/home/joonas97/data/kits21/kits21/data/')
 
 # gather all KITS segmentation files
+
 segmentations = []
+logging.info("collecting filenames")
 for filename in glob.glob('*/aggregated_MAJ_seg.nii.gz'):
     segmentations.append(filename)
 
 # load images and filter them to slices with and without kidney
 organized_slices = {}
+logging.info("organizing ct slice indexes to kidney/no kidney groups")
 for file in tqdm(segmentations):
     case_id = file.split('/')[0]
     segmentation = nib.load(file).get_fdata()
@@ -38,31 +53,31 @@ np.random.seed(19)  # fix seed
 patient_indexes = np.arange(300)
 np.random.shuffle(patient_indexes)
 
-train_patients = patient_indexes[:100]
-train_slices = {key: organized_slices[key] for key in train_patients}
-with open("train_slices.json", "w") as outfile:
-    json.dump(train_slices, outfile)
+logging.info("splitting slice indexes to train/val(scorecam)/test")
+train_slices = get_slices(organized_slices, patient_indexes[:50], file_name='train_slices')
+scorecam_slices = get_slices(organized_slices, patient_indexes[50:250], file_name='scorecam_slices')
+test_slices = get_slices(organized_slices, patient_indexes[:50], file_name='test_slices')
 
-scorecam_patients = patient_indexes[100:250]
-scorecam_slices = {key: organized_slices[key] for key in scorecam_patients}
-with open("scorecam_slices.json", "w") as outfile:
-    json.dump(scorecam_slices, outfile)
+logging.info("collecting ct images based on indexes")
+for slice_type, slices in {'train': train_slices, 'scorecam': scorecam_slices, 'test': test_slices}:
 
-test_patients = patient_indexes[250:]
-test_slices = {key: organized_slices[key] for key in test_patients}
-with open("test_slices.json", "w") as outfile:
-    json.dump(test_slices, outfile)
+    logging.info('starting with ' + slice_type)
+    firstiter = True
+    for (keys, values) in tqdm(slices.items()):
+        ct_scan = nib.load(keys + '/imaging.nii.gz').get_fdata()
 
-firstiter = True
-for (keys, values) in tqdm(organized_slices.items()):
-    ct_scan = nib.load(keys + '/imaging.nii.gz').get_fdata()
+        if firstiter:
+            all_kidney_slices = ct_scan[values[0]]
+            all_no_kidney_slices = ct_scan[values[1]]
+            firstiter = False
+        else:
+            new_kidney_slices = ct_scan[values[0]]
+            new_no_kidney_slices = ct_scan[values[1]]
+            all_kidney_slices = np.concatenate((all_kidney_slices, new_kidney_slices), axis=0)
+            all_no_kidney_slices = np.concatenate((all_no_kidney_slices, new_no_kidney_slices), axis=0)
 
-    if firstiter:
-        all_kidney_slices = ct_scan[values[0]]
-        all_no_kidney_slices = ct_scan[values[1]]
-        firstiter = False
-    else:
-        new_kidney_slices = ct_scan[values[0]]
-        new_no_kidney_slices = ct_scan[values[1]]
-        all_kidney_slices = np.concatenate((all_kidney_slices, new_kidney_slices), axis=0)
-        all_no_kidney_slices = np.concatenate((all_no_kidney_slices, new_no_kidney_slices), axis=0)
+    logging.info('saving ' + slice_type + 'images')
+    np.save(slice_type + 'kidney_slices', all_kidney_slices)
+    np.save(slice_type + 'no_kidney_slices', all_no_kidney_slices)
+
+logging.info("All done!")
