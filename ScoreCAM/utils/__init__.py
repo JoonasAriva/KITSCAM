@@ -595,5 +595,8 @@ def find_layer(arch, target_layer_name):
 
     #if target_layer_name.split('_') not in arch._modules.keys():
         #raise Exception("Invalid target layer name.")
-    target_layer = arch._modules[target_layer_name]
+    try:
+        target_layer = arch._modules[target_layer_name]
+    except:
+        target_layer = arch.get_submodule(target_layer_name)
     return target_layer

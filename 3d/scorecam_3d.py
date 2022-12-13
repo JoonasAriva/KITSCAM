@@ -28,7 +28,7 @@ logging.info("Loading model")
 model = monai.networks.nets.EfficientNetBN("efficientnet-b0", spatial_dims=3, in_channels=1, num_classes=2).to(device)
 model.load_state_dict(torch.load('/gpfs/space/home/joonas97/KITSCAM/best_metric_model_classification3d_array.pth'))
 
-summary(model, (1, 45, 512, 512))
+summary(model, (1, 200, 512, 512))
 
 model_dict = dict(type='efficientnet', arch=model, layer_name='_blocks', input_size=(512, 512))
 efficientnet_scorecam = ScoreCAM(model_dict)

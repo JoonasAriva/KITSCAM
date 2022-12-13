@@ -9,7 +9,9 @@ class CustomDataset(torch.utils.data.Dataset):
         # store the raw tensors
 
         self._x = np.load(data_dir + '/data.npy')
+
         self._y = np.load(data_dir + '/labels.npy')
+
         print("data loaded")
         print("Shape: ", self._x.shape)
         if mu is None or std is None:
