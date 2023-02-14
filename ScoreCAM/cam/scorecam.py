@@ -35,7 +35,7 @@ class ScoreCAM(BaseCAM):
         self.model_arch.zero_grad()
         score.backward(retain_graph=retain_graph)
         activations = self.activations['value'][0]
-        #b, k, u, v = activations.size()
+        # b, k, u, v = activations.size()
         k, dpt, u, v = activations.size()
 
         score_saliency_map = torch.zeros((1, 1, d, h, w))
@@ -48,8 +48,8 @@ class ScoreCAM(BaseCAM):
             for i in range(k):
 
                 # upsampling
-                saliency_map = torch.unsqueeze(torch.unsqueeze(activations[i, :, :, :], 0),0)
-                saliency_map = F.interpolate(saliency_map, size=(d,h, w), mode='trilinear', align_corners=False)
+                saliency_map = torch.unsqueeze(torch.unsqueeze(activations[i, :, :, :], 0), 0)
+                saliency_map = F.interpolate(saliency_map, size=(d, h, w), mode='trilinear', align_corners=False)
 
                 if saliency_map.max() == saliency_map.min():
                     continue
@@ -73,8 +73,8 @@ class ScoreCAM(BaseCAM):
 
         score_saliency_map = (score_saliency_map - score_saliency_map_min).div(
             score_saliency_map_max - score_saliency_map_min).data
-
-        return score_saliency_map
+        # added predicted class returning
+        return score_saliency_map, predicted_class
 
     def __call__(self, input, class_idx=None, retain_graph=False):
         return self.forward(input, class_idx, retain_graph)

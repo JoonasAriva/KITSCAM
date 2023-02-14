@@ -1,0 +1,17 @@
+hydra:
+  run:
+    dir: results/${hydra.job.name}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
+project: kits_lits_exp
+
+training:
+  epochs: 50
+  batch_size: 1
+  learning_rate: 1e-4
+
+
+model:
+  classes: 2
+  name: efficientnet-b1
+
+check: False

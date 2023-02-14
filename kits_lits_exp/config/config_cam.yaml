@@ -1,0 +1,9 @@
+hydra:
+  run:
+    dir: results/${hydra.job.name}/${model.name}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
+project: KITS+LITS_classification_CAMS
+
+model:
+  name: efficientnet-b1
+  scorecam_layer: _blocks.0
